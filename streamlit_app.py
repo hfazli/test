@@ -1,28 +1,33 @@
 import streamlit as st
-st.set_page_config(page_title="Prediksi Rekrutmen Kandidat")  # HARUS PALING ATAS
-
 import numpy as np
 import joblib
 import os
 
-# ======== Konfigurasi Path Model ========
-MODEL_PATH = "recruitment_model.joblib"  # ⬅️ Ubah ke file di root folder
+# ======== Konfigurasi Awal Streamlit ========
+st.set_page_config(page_title="Prediksi Rekrutmen Kandidat")  # HARUS PALING ATAS
 
-# ======== Load Model ========
+# ======== Path Model ========
+MODEL_PATH = "recruitment_model.joblib"
+
+# ======== Load Model (Aman & Cache) ========
 @st.cache_resource
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        st.error("Model belum dilatih. Jalankan model_training.py terlebih dahulu.")
+    try:
+        return joblib.load(MODEL_PATH)
+    except FileNotFoundError:
+        st.error("❌ File model tidak ditemukan. Pastikan recruitment_model.joblib ada di folder yang sama.")
         return None
-    return joblib.load(MODEL_PATH)
+    except Exception as e:
+        st.error(f"❌ Gagal memuat model: {e}")
+        return None
 
 model = load_model()
 
-# ======== Judul Aplikasi ========
+# ======== Judul Halaman ========
 st.title("🎯 Prediksi Hasil Rekrutmen Kandidat")
 st.write("Masukkan informasi kandidat untuk memprediksi apakah mereka akan diterima.")
 
-# ======== Form Input User ========
+# ======== Form Input Pengguna ========
 with st.form("form_prediksi"):
     city = st.selectbox("Lokasi Kandidat", ["city_1", "city_2", "city_3"], index=0)
     city_development_index = st.slider("City Development Index (0.0 - 1.0)", 0.0, 1.0, 0.5)
@@ -31,11 +36,11 @@ with st.form("form_prediksi"):
     enrolled_university = st.selectbox("Status Kuliah", ["no_enrollment", "Full time course", "Part time course"])
     education_level = st.selectbox("Tingkat Pendidikan", ["Graduate", "Masters", "PhD", "Unknown"])
     major_discipline = st.selectbox("Jurusan", ["STEM", "Business Degree", "Arts", "Humanities", "Other", "Unknown"])
-    experience = st.slider("Pengalaman (tahun)", 0, 20, 2)
+    experience = st.slider("Pengalaman kerja (dalam tahun)", 0, 20, 2)
     company_size = st.selectbox("Ukuran Perusahaan Terakhir", ["Unknown", "<10", "10/49", "50-99", "100-500", "500-999", "1000-4999", "5000-9999", "10000+"])
     company_type = st.selectbox("Jenis Perusahaan", ["Unknown", "Private", "Public", "NGO", "Startup", "Other"])
     last_new_job = st.slider("Tahun sejak terakhir pindah kerja", 0, 5, 1)
-    training_hours = st.number_input("Jumlah Training Hours", 0, 300, 50)
+    training_hours = st.number_input("Jumlah Jam Pelatihan (Training Hours)", 0, 300, 50)
 
     submitted = st.form_submit_button("🔍 Prediksi")
 
@@ -52,7 +57,7 @@ manual_encode = {
     "company_type": {"Private": 4, "Public": 5, "NGO": 2, "Startup": 6, "Other": 1, "Unknown": 0},
 }
 
-# ======== Prediksi ========
+# ======== Prediksi Model ========
 if submitted:
     if model is None:
         st.stop()
@@ -74,4 +79,11 @@ if submitted:
 
     prediction = model.predict(input_data)[0]
 
-    st.success("✅ Kandidat kemungkinan **akan diterima.**" if prediction == 1 else "❌ Kandidat kemungkinan **tidak diterima.**")
+    if prediction == 1:
+        st.success("✅ Kandidat kemungkinan **akan diterima.**")
+    else:
+        st.error("❌ Kandidat kemungkinan **tidak diterima.**")
+
+# ======== Footer ========
+st.markdown("---")
+st.caption("🧠 Aplikasi ini dibuat oleh Hedi Fazli · Universitas Buana Perjuangan Karawang")
